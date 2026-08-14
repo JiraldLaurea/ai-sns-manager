@@ -108,6 +108,7 @@ export function DraftCard({
   assetUploadEnabled = false,
   showAssetThumbnails = true,
   hideHeader = false,
+  plainCaption = false,
 }: {
   draft: PostDraft;
   editable?: boolean;
@@ -119,6 +120,7 @@ export function DraftCard({
   assetUploadEnabled?: boolean;
   showAssetThumbnails?: boolean;
   hideHeader?: boolean;
+  plainCaption?: boolean;
   platformDrafts?: PostDraft[]; // accepted by callers; unused in component body
 }) {
   const [caption, setCaption] = useState(draft.caption);
@@ -209,14 +211,23 @@ export function DraftCard({
           </div>
         </div>
       ) : null}
-      <label>
-        Caption
-        <textarea
-          value={caption}
-          onChange={(event) => updateCaption(event.target.value)}
-          readOnly={!editable}
-        />
-      </label>
+      {plainCaption && !editable ? (
+        <div>
+          <div className="text-sm text-muted">Caption</div>
+          <p className="m-0 mt-2 whitespace-pre-wrap leading-relaxed text-ink">
+            {caption}
+          </p>
+        </div>
+      ) : (
+        <label>
+          Caption
+          <textarea
+            value={caption}
+            onChange={(event) => updateCaption(event.target.value)}
+            readOnly={!editable}
+          />
+        </label>
+      )}
       <div className="mt-3.5 grid gap-4">
         <label>
           Hashtags
@@ -708,15 +719,17 @@ export const DraftImagePanel = forwardRef<
                       top: "8px",
                       right: "8px",
                       zIndex: 2,
-                      width: "28px",
-                      height: "28px",
+                      width: "36px",
+                      height: "36px",
+                      minHeight: "36px",
+                      minWidth: "36px",
                       borderRadius: "50%",
+                      border: "1px solid rgba(255,255,255,0.72)",
                       background:
                         hoveredRemoveImageIndex === activeImageSafeIndex
-                          ? "rgba(0,0,0,0.78)"
-                          : "rgba(0,0,0,0.65)",
+                          ? "rgba(15,23,42,0.78)"
+                          : "rgba(15,23,42,0.62)",
                       color: "white",
-                      border: "none",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
@@ -725,7 +738,7 @@ export const DraftImagePanel = forwardRef<
                       transition: "background 150ms ease",
                     }}
                   >
-                    <X size={14} />
+                    <X size={18} />
                   </button>
                 ) : null}
                 {hasMultipleImages ? (

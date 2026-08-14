@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, Loader2, RotateCcw, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DraftCard, DraftImagePanel } from "@/components/draft-card";
 import { Shell } from "@/components/shell";
 import { Button, ConfirmationModal, Modal, Notice, Panel, fieldNoteClass } from "@/components/ui";
@@ -32,6 +32,8 @@ const TIKTOK_PRIVACY_LABELS: Record<string, string> = {
   SELF_ONLY: "Only me (private)"
 };
 
+const APPROVAL_IMAGE_PANEL_MAX_HEIGHT = 417;
+
 type TikTokCreator = {
   creatorNickname?: string | null;
   creatorUsername?: string | null;
@@ -51,6 +53,8 @@ export default function ApprovalsPage() {
   const [tiktokCreator, setTiktokCreator] = useState<TikTokCreator | null>(null);
   const [tiktokPrivacy, setTiktokPrivacy] = useState("");
   const [tiktokCreatorError, setTiktokCreatorError] = useState("");
+  const draftPanelRef = useRef<HTMLDivElement>(null);
+  const [draftPanelHeight, setDraftPanelHeight] = useState<number | null>(null);
   const draftGroups = groupDraftsByBrief(drafts);
   const selectedGroup = draftGroups.find((group) => group.id === selectedGroupId);
   const selectedDraft = selectedGroup?.drafts[0];
@@ -58,6 +62,8 @@ export default function ApprovalsPage() {
   const selectedGroupRequiresImage = selectedGroup?.drafts.some((draft) => ["instagram", "tiktok"].includes(draft.platform)) ?? false;
   const selectedGroupHasTikTok = selectedGroup?.drafts.some((draft) => draft.platform === "tiktok") ?? false;
   const publishBlocked = selectedGroupRequiresImage && !selectedGroupHasImage;
+  const imagePanelHeight = draftPanelHeight ? Math.min(draftPanelHeight, APPROVAL_IMAGE_PANEL_MAX_HEIGHT) : null;
+  const imagePreviewHeight = imagePanelHeight ? Math.max(imagePanelHeight - 70, 180) : undefined;
 
   useEffect(() => {
     async function loadAssets() {
@@ -75,6 +81,28 @@ export default function ApprovalsPage() {
     }
     void loadAssets();
   }, [selectedGroupId, selectedWorkspaceId]);
+
+  useEffect(() => {
+    if (!selectedDraft || !draftPanelRef.current) {
+      setDraftPanelHeight(null);
+      return;
+    }
+
+    const panelElement = draftPanelRef.current;
+    function updateDraftPanelHeight() {
+      setDraftPanelHeight(Math.ceil(panelElement.getBoundingClientRect().height));
+    }
+
+    updateDraftPanelHeight();
+    const observer = new ResizeObserver(updateDraftPanelHeight);
+    observer.observe(panelElement);
+    window.addEventListener("resize", updateDraftPanelHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateDraftPanelHeight);
+    };
+  }, [selectedDraft?.id, selectedGroupHasTikTok, tiktokCreator, tiktokCreatorError, scheduleAt, message]);
 
   useEffect(() => {
     async function loadTikTokCreator() {
@@ -240,13 +268,15 @@ export default function ApprovalsPage() {
       </div>
 
       {selectedDraft && selectedGroup ? (
-        <div className="grid gap-6 min-[921px]:grid-cols-2">
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "24px", alignItems: "start" }}>
+          <div ref={draftPanelRef}>
           <Panel>
             <div className="min-w-0">
               <DraftCard
                 draft={selectedDraft}
                 hideHeader
                 platformDrafts={selectedGroup.drafts}
+                plainCaption
                 showAssetThumbnails={false}
                 showWarnings={false}
               />
@@ -343,17 +373,20 @@ export default function ApprovalsPage() {
 
             {message ? <Notice className="mt-4">{message}</Notice> : null}
           </Panel>
+          </div>
 
-          <Panel className="flex h-full min-h-[420px] min-w-0 flex-col overflow-hidden">
+          <div style={imagePanelHeight ? { height: `${imagePanelHeight}px`, minHeight: 0 } : { minHeight: 0 }}>
+          <Panel className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
             <div className="mb-2 text-[13px] text-muted">Image</div>
             <DraftImagePanel
               className="flex-1"
               draft={selectedDraft}
               key={selectedDraft.id}
-              maxPreviewHeight={420}
+              maxPreviewHeight={imagePreviewHeight}
               readOnly
             />
           </Panel>
+          </div>
         </div>
       ) : (
         <Panel>
